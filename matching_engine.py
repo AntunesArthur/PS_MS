@@ -12,6 +12,7 @@ def create_book():
         'buy': SortedDict(),
         'sell': SortedDict(),
         'orders_by_id': {},
+        'pegged_orders_id': set()
     }
 
 def insert_into_book(book, order):
@@ -134,7 +135,7 @@ def match_order(book, side, price, qty):
     if book_order['remaining_qty'] > 0:
         insert_into_book(book, book_order)
 
-    return trades
+    return book_order, trades
 
 def cancel_order(book, order_id):
     order = book['orders_by_id'][order_id]
@@ -170,3 +171,23 @@ def amend_order(book, order_id, new_price=None, new_qty=None):
         if new_qty is not None:
             order['qty'] = new_qty
             order['remaining_qty'] = new_qty
+
+def pegged_orders(book, side, peg_reference, qty):
+    if peg_reference == 'bid':
+        if len(book['buy']) == 0:
+            return "Nao ha acoes de referencia ainda"
+        best_price, _ = book['buy'].peekitem(-1)
+    else:  # peg_reference == 'offer'
+        if len(book['sell']) == 0:
+            return "Nao ha acoes de referencia ainda"
+        best_price, _ = book['sell'].peekitem(0)
+
+    book_order, trades = match_order(book, side, best_price, qty)
+
+    book_order['order_type'] = 'peg'
+    book_order['peg_reference'] = peg_reference
+
+    if book_order['remaining_qty'] > 0:
+        book['pegged_orders_id'].add(book_order['id'])
+
+    return book_order, trades
