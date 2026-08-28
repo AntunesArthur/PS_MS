@@ -137,20 +137,16 @@ def match_order(book, side, price, qty):
     return trades
 
 def cancel_order(book, order_id):
-    #buscando diretamente o id do cara que queremos apagar
     order = book['orders_by_id'][order_id]
+    remove_from_book(book, order)
 
-    #tendo ela na mao, conseguimos inferir imediatamente onde ele esta e a qual preco esta cotado
+def remove_from_book(book, order): #funcao responsavel por remover qualquer order do book, sera auxiliar para cancel e amend
     side = order['side']
     price = order['price']
-    #remove a primeira ocorrencia que for igual ao valor passado (order), ou seja, ela remove
-    #exatamente o dic que for igual ao da ocorrencia que estamos procurando, sendo assim capaz de remover
-    #percorrendo ele
+    #remove exatamente a order que esta no book[side][price]
     book[side][price].remove(order)
-
-    #se apos a remocao nos nao temos mais cotas, entao deletamos
+    #se apos a remocao nos nao temos mais cota, deletamos
     if len(book[side][price]) == 0: del book[side][price]
-
-    #sempre deletar do 'orders_by_id', para nao ficar la e acabar sendo solicitado novamente e dando ValueError
+    #sempre deletar do 'orders_by_id' para nao ficar la e acabar sendo solicitado novamente dando ValueError
     #pois ja foi removido do book[side]
-    del book['orders_by_id'][order_id]
+    del book['orders_by_id'][order[id]]
