@@ -83,3 +83,48 @@ def place_market_order(book, side, qty):
                 del book['buy'][best_price]
 
     return trades
+
+def match_order(book, side, price, qty):
+    book_order = {
+        'id': str(uuid.uuid4()),
+        'side': side,
+        'price': price,
+        'order_type': 'limit',
+        'qty': qty,
+        'remaining_qty': qty,
+        'sequence': next(_sequence_counter)
+    }
+
+    trades = []
+    opposite_side = "sell" if side == 'buy' else 'buy'
+
+    while len(book[opposite_side]) != 0 and book_order['remaining_qty'] > 0:
+        if side == 'buy':
+            best_price, queue = book[opposite_side].peekitem(0)
+        if side == 'sell':
+            best_price, queue = book[opposite_side].peekitem(-1)
+        #antes de prosseguir com qualquer decisao observamos os precos,
+        #se estamos querendo comprar e o melhor preco de venda e maior do que o preco que queremos pagar
+        #isso implica que no momento nao ha 
+        if side == 'buy' and best_price > price: break
+        if side == 'sell' and best_price < price: break
+
+        resting_order = queue[0]
+
+        traded_qty = min(book_order['remaining_qty'], resting_order['remaining_qty'])
+
+        trades.append({'price': best_price, 'qty': traded_qty})
+
+        book_order['remaining_qty'] -= traded_qty
+
+        resting_order['remaining_qty'] -= traded_qty
+
+        if resting_order['remaining_qty'] == 0:
+            queue.popleft()
+            if len(queue) == 0:
+                del book[opposite_side][best_price]
+
+    if book_order['remaining_qty'] > 0:
+        place_limit_order(book, side, price, book_order['remaining_qty'])
+
+    return trades
