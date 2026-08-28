@@ -13,6 +13,17 @@ def create_book():
         'sell': SortedDict(),
         'orders_by_id': {},
     }
+
+def insert_into_book(book, order):
+    side = order['side']
+    price = order['price']
+
+    if price not in book[side]:
+        book[side][price] = deque()
+    book[side][price].append(order)
+
+    book['orders_by_id'][order['id']] = order
+
 def place_limit_order(book, side, price, qty):
     #book_order utilizado para alocarmos as novas infos de toda nova ordem que chegar
     book_order = {
@@ -25,11 +36,7 @@ def place_limit_order(book, side, price, qty):
                 'sequence': next(_sequence_counter)
     }
     #criamos uma fila dentro do nosso dic para respeitar a ordem das solicitacoes de compra ou venda
-    if price not in book[side]:
-        book[side][price] = deque()
-    book[side][price].append(book_order)
-
-    book['orders_by_id'][book_order['id']] = book_order
+    insert_into_book(book, book_order)
 
     return book_order
 
@@ -125,7 +132,7 @@ def match_order(book, side, price, qty):
                 del book[opposite_side][best_price]
 
     if book_order['remaining_qty'] > 0:
-        place_limit_order(book, side, price, book_order['remaining_qty'])
+        insert_into_book(book, book_order)
 
     return trades
 
