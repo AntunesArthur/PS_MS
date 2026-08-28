@@ -149,4 +149,24 @@ def remove_from_book(book, order): #funcao responsavel por remover qualquer orde
     if len(book[side][price]) == 0: del book[side][price]
     #sempre deletar do 'orders_by_id' para nao ficar la e acabar sendo solicitado novamente dando ValueError
     #pois ja foi removido do book[side]
-    del book['orders_by_id'][order[id]]
+    del book['orders_by_id'][order['id']]
+
+def amend_order(book, order_id, new_price=None, new_qty=None):
+    order = book['orders_by_id'][order_id]
+
+    price_change = (new_price is not None) and (new_price != order['price'])
+    #a mudanca so causa perda de prioridade caso a alteracao seja no preco, se apenas a quantidade esta sendo alterada
+    #a priroidade continua a mesma
+    if price_change:
+        remove_from_book(book, order)
+        order['price'] = new_price
+        if new_qty is not None:
+            order['qty'] = new_qty
+            order['remaining_qty'] = new_qty
+        order['sequence'] = next(_sequence_counter)
+        insert_into_book(book, order)
+
+    if not price_change:
+        if new_qty is not None:
+            order['qty'] = new_qty
+            order['remaining_qty'] = new_qty
