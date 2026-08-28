@@ -13,8 +13,8 @@ def create_book():
         'sell': SortedDict(),
         'orders_by_id': {},
     }
-
 def place_limit_order(book, side, price, qty):
+    #book_order utilizado para alocarmos as novas infos de toda nova ordem que chegar
     book_order = {
         'id': str(uuid.uuid4()),
                 'side': side,
@@ -24,6 +24,7 @@ def place_limit_order(book, side, price, qty):
                 'remaining_qty': qty,
                 'sequence': next(_sequence_counter)
     }
+    #criamos uma fila dentro do nosso dic para respeitar a ordem das solicitacoes de compra ou venda
     if price not in book[side]:
         book[side][price] = deque()
     book[side][price].append(book_order)
@@ -32,4 +33,42 @@ def place_limit_order(book, side, price, qty):
 
     return book_order
 
+def place_market_order(book, side, qty):
+    book_order = {
+        'id': str(uuid.uuid4()),
+        'side': side,
+        'price': None,
+        'order_type': 'market',
+        'qty': qty,
+        'remaining_qty': qty,
+        'sequence': next(_sequence_counter),
+    }
+    trades = []
+    while book_order['remaining_qty'] > 0 and len(book[side]) > 0:  
+        if side == 'buy':
+            best_price, queue = book['sell'].peekitem(-1)
+        if side == 'sell':
+            best_price, queue = book['buy'].peekitem(0)
 
+        resting_order = queue[0]
+
+        traded_qty = min(book_order['remaining_qty'], resting_order['remaining_qty'])
+
+        trades.append({'price': best_price, 'qty': traded_qty})
+
+        book_order['remaining_qty'] -= traded_qty
+
+        resting_order['remaining_qty'] -= traded_qty
+
+        if resting_order['remaining_qty'] == 0:
+            queue.popleft()
+            if len(queue) == 0 and side == 'buy':
+                del book['sell'][best_price]
+            elif len(queue) == 0 and side == 'sell':
+                del book['buy'][best_price]
+
+    return trades
+
+booke = create_book()
+place_limit_order(booke, 'buy', 10, 100)
+print(booke)
