@@ -34,6 +34,8 @@ def place_limit_order(book, side, price, qty):
     return book_order
 
 def place_market_order(book, side, qty):
+    #criamos um book_order para alocarmos as novas infos de toda ordem nova, assim como na funcao
+    #place_limit_order
     book_order = {
         'id': str(uuid.uuid4()),
         'side': side,
@@ -43,15 +45,27 @@ def place_market_order(book, side, qty):
         'remaining_qty': qty,
         'sequence': next(_sequence_counter),
     }
+    #lista para guardar os trades que fizermos
     trades = []
-    while book_order['remaining_qty'] > 0 and len(book[side]) > 0:  
-        if side == 'buy':
-            best_price, queue = book['sell'].peekitem(-1)
-        if side == 'sell':
-            best_price, queue = book['buy'].peekitem(0)
 
+    opposite_side = 'sell' if side == 'buy' else 'buy'
+
+    #nos so mantemos as compras/vendas em market_order enquanto nao tivermos vendido/comprado todas
+    #as acoes solicitadas e que tenham acoes suficientes pra isso, isto e 'len(book[side]) > 0'
+    while book_order['remaining_qty'] > 0 and len(book[opposite_side]) > 0:
+        #nesse ponto criamos uma tupla com o melhor preco de compra/venda e as informacoes da exata
+        #compra ou venda que esta sendo feito, a queue  
+        if side == 'buy':
+            best_price, queue = book['sell'].peekitem(0)
+        if side == 'sell':
+            best_price, queue = book['buy'].peekitem(-1)
+
+        #da nossa queue pegamos sempre o primeiro (FIFO)
         resting_order = queue[0]
 
+        #as 4 linhas abaixos sao responsaveis por computar a quantidade de trading feita, salvar eleas
+        #na lista e tambem atualizar a quantidade que falta para comprarmos/vendermos do market
+        #e a quantidade que talvez tenha sobrado da nossa queue
         traded_qty = min(book_order['remaining_qty'], resting_order['remaining_qty'])
 
         trades.append({'price': best_price, 'qty': traded_qty})
@@ -61,6 +75,7 @@ def place_market_order(book, side, qty):
         resting_order['remaining_qty'] -= traded_qty
 
         if resting_order['remaining_qty'] == 0:
+            #se vendemos todas as cotas de uma ordem, descartamos ela pois seu papel ja foi cumprido
             queue.popleft()
             if len(queue) == 0 and side == 'buy':
                 del book['sell'][best_price]
@@ -68,7 +83,3 @@ def place_market_order(book, side, qty):
                 del book['buy'][best_price]
 
     return trades
-
-booke = create_book()
-place_limit_order(booke, 'buy', 10, 100)
-print(booke)
