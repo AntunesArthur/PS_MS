@@ -191,3 +191,29 @@ def pegged_orders(book, side, peg_reference, qty):
         book['pegged_orders_id'].add(book_order['id'])
 
     return book_order, trades
+
+def refresh_pegged_orders(book):
+    for order_id in list(book['pegged_orders_id']):
+        order = book['orders_by_id'][order_id]
+        old_price = order['price']
+        old_sequence = order['sequence']
+
+        #remove temporariamente para ordem nao contar como sua propria referencia
+        remove_from_book(book, order)
+
+        ref_side = 'buy' if order['peg_reference'] == 'bid' else 'sell'
+
+        if len(book[ref_side]) == 0:
+            #sem nenhuma ordem de ref sobrando, mantem o preco anterior
+            new_price = old_price
+        elif order['peg_reference'] == 'bid':
+            new_price, _ = book['buy'].peekitem(-1)
+        else:
+            new_price, _ = book['sell'].peekitem(0)
+
+        order['price'] = new_price
+        #so perde posicao na fila se o preco relamnete mudou
+
+        order['sequence'] = old_sequence if new_price == old_price else next(_sequence_counter)
+
+        insert_into_book(book, order)
