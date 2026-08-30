@@ -38,7 +38,7 @@ def place_limit_order(book, side, price, qty):
     }
     #criamos uma fila dentro do nosso dic para respeitar a ordem das solicitacoes de compra ou venda
     insert_into_book(book, book_order)
-
+    refresh_pegged_orders(book)
     return book_order
 
 def place_market_order(book, side, qty):
@@ -90,6 +90,7 @@ def place_market_order(book, side, qty):
             elif len(queue) == 0 and side == 'sell':
                 del book['buy'][best_price]
 
+    refresh_pegged_orders(book)
     return trades
 
 def match_order(book, side, price, qty):
@@ -135,11 +136,13 @@ def match_order(book, side, price, qty):
     if book_order['remaining_qty'] > 0:
         insert_into_book(book, book_order)
 
+    refresh_pegged_orders(book)
     return book_order, trades
 
 def cancel_order(book, order_id):
     order = book['orders_by_id'][order_id]
     remove_from_book(book, order)
+    refresh_pegged_orders(book)
 
 def remove_from_book(book, order): #funcao responsavel por remover qualquer order do book, sera auxiliar para cancel e amend
     side = order['side']
@@ -171,6 +174,7 @@ def amend_order(book, order_id, new_price=None, new_qty=None):
         if new_qty is not None:
             order['qty'] = new_qty
             order['remaining_qty'] = new_qty
+    refresh_pegged_orders(book)
 
 def pegged_orders(book, side, peg_reference, qty):
     if peg_reference == 'bid':
@@ -190,6 +194,7 @@ def pegged_orders(book, side, peg_reference, qty):
     if book_order['remaining_qty'] > 0:
         book['pegged_orders_id'].add(book_order['id'])
 
+    refresh_pegged_orders(book)
     return book_order, trades
 
 def refresh_pegged_orders(book):
