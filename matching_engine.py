@@ -222,3 +222,33 @@ def refresh_pegged_orders(book):
         order['sequence'] = old_sequence if new_price == old_price else next(_sequence_counter)
 
         insert_into_book(book, order)
+
+def format_book(book):
+    lines = []
+    lines.append("Ordens de Compra    | Ordens de Venda")
+    lines.append("-------------------|-----------------")
+
+    buy_prices = sorted(book['buy'].keys(), reverse=True)  # maior pro menor
+    sell_prices = sorted(book['sell'].keys())               # menor pro maior
+
+    max_rows = max(len(buy_prices), len(sell_prices))
+
+    #formato da tabela foi feito por agregacao, varias ordens no mesmo preco viram uma linha so
+    for i in range(max_rows):
+        if i < len(buy_prices):
+            price = buy_prices[i]
+            total_qty = sum(order['remaining_qty'] for order in book['buy'][price])
+            buy_col = f"{total_qty} @ {price}"
+        else:
+            buy_col = ""
+
+        if i < len(sell_prices):
+            price = sell_prices[i]
+            total_qty = sum(order['remaining_qty'] for order in book['sell'][price])
+            sell_col = f"{total_qty} @ {price}"
+        else:
+            sell_col = ""
+
+        lines.append(f"{buy_col:<20}| {sell_col}")
+
+    return "\n".join(lines)
