@@ -85,6 +85,10 @@ def place_market_order(book, side, qty):
         if resting_order['remaining_qty'] == 0:
             #se vendemos todas as cotas de uma ordem, descartamos ela pois seu papel ja foi cumprido
             queue.popleft()
+            #a ordem consumida precisa sair tambem dos indices auxiliares, senao fica fantasma
+            #em orders_by_id
+            del book['orders_by_id'][resting_order['id']]
+            book['pegged_orders_id'].discard(resting_order['id'])
             if len(queue) == 0 and side == 'buy':
                 del book['sell'][best_price]
             elif len(queue) == 0 and side == 'sell':
@@ -130,6 +134,10 @@ def match_order(book, side, price, qty):
 
         if resting_order['remaining_qty'] == 0:
             queue.popleft()
+            #a ordem consumida precisa sair tambem dos indices auxiliares, senao fica
+            #fantasma em orders_by_id (e em pegged_orders_id, se for o caso)
+            del book['orders_by_id'][resting_order['id']]
+            book['pegged_orders_id'].discard(resting_order['id'])
             if len(queue) == 0:
                 del book[opposite_side][best_price]
 
@@ -227,28 +235,30 @@ def format_book(book):
     lines = []
     lines.append("Ordens de Compra    | Ordens de Venda")
     lines.append("-------------------|-----------------")
-
-    buy_prices = sorted(book['buy'].keys(), reverse=True)  # maior pro menor
-    sell_prices = sorted(book['sell'].keys())               # menor pro maior
-
-    max_rows = max(len(buy_prices), len(sell_prices))
-
-    #formato da tabela foi feito por agregacao, varias ordens no mesmo preco viram uma linha so
+ 
+    buy_prices = sorted(book['buy'].keys(), reverse=True)
+    sell_prices = sorted(book['sell'].keys())
+ 
+    # cada ordem vira uma linha propria (nao agregamos por preco), respeitando
+    # a ordem FIFO dentro de cada nivel de preco. Ordens pegged sao marcadas
+    # com "(peg)" para diferenciar de limit orders no mesmo preco.
+    buy_rows = []
+    for price in buy_prices:
+        for order in book['buy'][price]:
+            tag = " (peg)" if order['order_type'] == 'peg' else ""
+            buy_rows.append(f"{order['remaining_qty']} @ {price}{tag}")
+ 
+    sell_rows = []
+    for price in sell_prices:
+        for order in book['sell'][price]:
+            tag = " (peg)" if order['order_type'] == 'peg' else ""
+            sell_rows.append(f"{order['remaining_qty']} @ {price}{tag}")
+ 
+    max_rows = max(len(buy_rows), len(sell_rows))
+ 
     for i in range(max_rows):
-        if i < len(buy_prices):
-            price = buy_prices[i]
-            total_qty = sum(order['remaining_qty'] for order in book['buy'][price])
-            buy_col = f"{total_qty} @ {price}"
-        else:
-            buy_col = ""
-
-        if i < len(sell_prices):
-            price = sell_prices[i]
-            total_qty = sum(order['remaining_qty'] for order in book['sell'][price])
-            sell_col = f"{total_qty} @ {price}"
-        else:
-            sell_col = ""
-
+        buy_col = buy_rows[i] if i < len(buy_rows) else ""
+        sell_col = sell_rows[i] if i < len(sell_rows) else ""
         lines.append(f"{buy_col:<20}| {sell_col}")
-
+ 
     return "\n".join(lines)
