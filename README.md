@@ -85,6 +85,6 @@ Sem um índice direto, cancelar ou alterar uma ordem exigiria uma varredura por 
 
 **Bug encontrado e corrigido durante testes**. Ordens do book totalmente consumidas durante o matching eram removidas da fila (`deque`) e, quando aplicável, do `SortedDict` de preços, mas não eram removidas de `orders_by_id` nem de `pegged_orders_id`. Isso deixava entradas "fantasma" nesses índices auxiliares, causando um `KeyError` ao tentar reposicionar via `refresh_pegged_orders` uma ordem pegged que já havia sido totalmente consumida em um matching anterior. A correção garante que, sempre que uma ordem é totalmente consumida, ela é removida de todos os índices, não apenas da estrutura do book.
 
-**Ordens do tipo peg são marcadas com `(peg)` para diferenciação visual.
+**Ordens do tipo peg são marcadas com `(peg)` para diferenciação visual.**
 
 
