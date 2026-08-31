@@ -87,4 +87,38 @@ Sem um índice direto, cancelar ou alterar uma ordem exigiria uma varredura por 
 
 **Ordens do tipo peg são marcadas com `(peg)` para diferenciação visual.**
 
+## 4. Testes
+
+A suíte de testes automatizados está em `test_matching_engine.py`, usando `pytest`.
+
+### Como rodar
+
+```bash
+pip install pytest
+pytest test_matching_engine.py -v
+```
+
+### Cobertura
+
+18 testes cobrindo os principais comportamentos da engine:
+
+- **Matching básico**: reprodução do exemplo do enunciado, fill total em market order
+  descartando a sobra não preenchida, e casamento de market sell contra o book de compra.
+- **Prioridade FIFO**: confirma que, entre duas ordens no mesmo nível de preço, a que chegou
+  primeiro é consumida primeiro.
+- **Fill parcial**: tanto em market quanto em limit orders, a quantidade não preenchida da
+  ordem do book permanece corretamente registrada.
+- **Cancelamento**: remoção de uma ordem do book e do índice `orders_by_id`, incluindo o caso
+  de cancelar uma entre múltiplas ordens no mesmo nível de preço.
+- **Amend**: mantém prioridade quando só a quantidade muda; perde prioridade e migra de nível
+  de preço quando o preço é alterado.
+- **Pegged orders**: preço inicial correto ao nascer, tratativa de ausência de referência,
+  atualização automática ao surgir um preço melhor, garantia de que uma ordem pegged nunca usa
+  a si mesma como referência de preço, e remoção do índice quando totalmente executada.
+- **Regressão**: dois testes específicos para o bug encontrado durante o desenvolvimento (ver
+  seção de decisões), garantindo que ordens totalmente consumidas em matching sejam
+  corretamente removidas dos índices auxiliares, sem deixar entradas fantasmas.
+
+Todos os 18 testes passam na versão atual do código.
+
 
